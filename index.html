@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinsale Product Flip</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #fdf6f5 0%, #f5f0f0 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px 48px;
+  }
+  h1 {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, #D52B1E, #E8564A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle { margin: 4px 0 12px; color: #888; font-size: 0.82rem; }
+  .legend { display: flex; gap: 12px; margin-bottom: 12px; font-size: 0.7rem; font-weight: 700; }
+  .legend-sm { background: #2563EB; color: #fff; padding: 2px 8px; border-radius: 8px; }
+  .legend-lm { background: #7C3AED; color: #fff; padding: 2px 8px; border-radius: 8px; }
+  .diff-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+  .diff-btn {
+    padding: 7px 18px; border-radius: 24px; border: 2px solid #ddd;
+    background: #fff; color: #555; font-weight: 600; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .diff-btn.active { border-color: #D52B1E; background: #D52B1E; color: #fff; }
+  .stats { display: flex; gap: 20px; margin-bottom: 14px; font-size: 0.9rem; font-weight: 600; color: #444; flex-wrap: wrap; justify-content: center; }
+  .stats .sm-count { color: #2563EB; }
+  .stats .lm-count { color: #7C3AED; }
+  .grid { display: grid; gap: 8px; width: 100%; }
+  .card-btn {
+    perspective: 600px; background: none; border: none; padding: 0;
+    cursor: pointer; width: 100%; aspect-ratio: 1;
+  }
+  .card-btn:disabled { cursor: default; }
+  .card-inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform 0.4s ease; transform-style: preserve-3d;
+  }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute; inset: 0; backface-visibility: hidden;
+    border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; flex-direction: column;
+  }
+  .card-back {
+    background: linear-gradient(135deg, #D52B1E, #E8564A);
+    color: #fff; font-weight: 700; box-shadow: 0 4px 12px rgba(213,43,30,0.3);
+    gap: 2px;
+  }
+  .card-back-title { font-size: 1.1rem; }
+  .card-back-sub { font-size: 0.5rem; opacity: 0.8; letter-spacing: 1px; }
+  .card-front {
+    transform: rotateY(180deg); background: #fff;
+    border: 2px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    gap: 3px; padding: 4px; text-align: center;
+    font-weight: 700; font-size: clamp(0.5rem, 1.6vw, 0.75rem);
+    line-height: 1.15; word-break: break-word; overflow: hidden; color: #333;
+  }
+  .card-front.matched {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .badge {
+    font-size: 0.4rem; font-weight: 800; letter-spacing: 0.5px;
+    color: #fff; padding: 1px 5px; border-radius: 6px; line-height: 1.4;
+  }
+  .badge-sm { background: #2563EB; }
+  .badge-lm { background: #7C3AED; }
+  .restart-btn {
+    margin-top: 20px; padding: 8px 22px; border-radius: 20px;
+    border: 2px solid #ddd; background: #fff; color: #777;
+    font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  }
+  .win-panel {
+    margin-top: 24px; text-align: center; background: #fff;
+    border-radius: 16px; padding: 24px 32px;
+    box-shadow: 0 8px 32px rgba(213,43,30,0.12);
+    animation: fadeIn 0.5s ease;
+  }
+  .win-panel h2 { color: #D52B1E; font-size: 1.3rem; margin: 0; }
+  .win-panel p { color: #555; margin: 8px 0 4px; }
+  .win-panel .sub { color: #888; margin: 0 0 12px; font-size: 0.8rem; }
+  .play-again {
+    padding: 10px 28px; border-radius: 24px; border: none;
+    background: linear-gradient(135deg, #D52B1E, #E8564A);
+    color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(213,43,30,0.3);
+  }
+  .confetti-piece {
+    position: absolute; top: -10px;
+    animation: confettiFall 2.2s ease-in forwards;
+  }
+  .confetti-wrap {
+    position: fixed; inset: 0; pointer-events: none; z-index: 999; overflow: hidden;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg) translateX(0); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg) translateX(60px); opacity: 0; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<h1>Kinsale Product Flip</h1>
+<p class="subtitle">Match molecules from the Kinsale product roadmap!</p>
+
+<div class="legend">
+  <span class="legend-sm">SM — Small Molecule</span>
+  <span class="legend-lm">LM — Large Molecule</span>
+</div>
+
+<div class="diff-bar" id="diffBar"></div>
+<div class="stats" id="stats"></div>
+<div class="grid" id="grid"></div>
+<div id="controls"></div>
+<div id="winPanel"></div>
+<div id="confettiWrap"></div>
+
+<script>
+const DIFFICULTIES = { Easy: {r:3,c:4}, Medium: {r:4,c:5}, Hard: {r:4,c:6} };
+const SM = ["Selpercatinib","Pirtobrutinib","Tirzepatide","Olanzapine","Orforglipron","Abemaciclib","Baricitinib","Lasmiditan","Imlunestrant"];
+const LM = ["Dulaglutide","Ramucirumab","Donanemab","Mirikizumab","Ixekizumab","Insulin Efsitora","Remternetug"];
+const POOL = [...SM, ...LM];
+const CAT = {}; SM.forEach(m=>CAT[m]="SM"); LM.forEach(m=>CAT[m]="LM");
+const COLORS = ["#6C63FF","#43E97B","#FF6B6B","#FFD93D","#48C6EF","#FF8A5C","#A78BFA","#34D399","#F472B6","#FBBF24","#22D3EE","#E879F9","#FB923C","#4ADE80","#818CF8","#F87171"];
+
+let difficulty = "Easy", cards = [], flippedIds = [], moves = 0, time = 0, running = false, won = false, timer = null, bestScores = {}, colorMap = {};
+
+function shuffle(a) { a = [...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function fmt(s) { return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+function buildDeck(r,c) {
+  const n = r*c/2, ch = shuffle(POOL).slice(0,n);
+  return shuffle([...ch,...ch]).map((l,i)=>({id:i,label:l,flipped:false,matched:false}));
+}
+
+function startGame(diff) {
+  difficulty = diff || difficulty;
+  const {r,c} = DIFFICULTIES[difficulty];
+  cards = buildDeck(r,c);
+  colorMap = {}; let ci = 0;
+  cards.forEach(cd => { if(!(cd.label in colorMap)) colorMap[cd.label] = ci++; });
+  flippedIds = []; moves = 0; time = 0; running = false; won = false;
+  clearInterval(timer);
+  render();
+}
+
+function handleClick(id) {
+  if(flippedIds.length===2||won) return;
+  const card = cards.find(c=>c.id===id);
+  if(card.flipped||card.matched) return;
+  if(!running) { running = true; timer = setInterval(()=>{time++;renderStats();},1000); }
+  card.flipped = true;
+  flippedIds.push(id);
+  renderGrid();
+  if(flippedIds.length===2) {
+    moves++;
+    const [a,b] = flippedIds.map(fid=>cards.find(c=>c.id===fid));
+    if(a.label===b.label) {
+      setTimeout(()=>{ a.matched=true; b.matched=true; a.flipped=false; b.flipped=false; flippedIds=[]; checkWin(); renderGrid(); renderStats(); },500);
+    } else {
+      setTimeout(()=>{ a.flipped=false; b.flipped=false; flippedIds=[]; renderGrid(); },1000);
+    }
+    renderStats();
+  }
+}
+
+function checkWin() {
+  if(cards.every(c=>c.matched)) {
+    won = true; running = false; clearInterval(timer);
+    const prev = bestScores[difficulty];
+    if(!prev||moves<prev) bestScores[difficulty] = moves;
+    renderWin(); showConfetti();
+  }
+}
+
+function render() { renderDiff(); renderStats(); renderGrid(); renderControls(); renderWin(); }
+
+function renderDiff() {
+  const bar = document.getElementById("diffBar");
+  bar.innerHTML = "";
+  Object.keys(DIFFICULTIES).forEach(d => {
+    const btn = document.createElement("button");
+    btn.className = "diff-btn" + (d===difficulty?" active":"");
+    btn.textContent = d;
+    btn.onclick = () => startGame(d);
+    bar.appendChild(btn);
+  });
+}
+
+function renderStats() {
+  const el = document.getElementById("stats");
+  const mSM = cards.filter(c=>c.matched&&CAT[c.label]==="SM").length/2;
+  const mLM = cards.filter(c=>c.matched&&CAT[c.label]==="LM").length/2;
+  let html = `<span>⏱ ${fmt(time)}</span><span>🔄 ${moves} moves</span>`;
+  html += `<span class="sm-count">SM: ${mSM}</span><span class="lm-count">LM: ${mLM}</span>`;
+  if(bestScores[difficulty]!=null) html += `<span>🏆 Best: ${bestScores[difficulty]}</span>`;
+  el.innerHTML = html;
+}
+
+function renderGrid() {
+  const el = document.getElementById("grid");
+  const {c} = DIFFICULTIES[difficulty];
+  el.style.gridTemplateColumns = `repeat(${c}, 1fr)`;
+  el.style.maxWidth = Math.min(c*88, 530) + "px";
+  el.style.gap = c > 5 ? "6px" : "8px";
+  el.innerHTML = "";
+  cards.forEach(card => {
+    const show = card.flipped || card.matched;
+    const cat = CAT[card.label];
+    const mc = COLORS[colorMap[card.label] % COLORS.length];
+    const btn = document.createElement("button");
+    btn.className = "card-btn";
+    btn.disabled = flippedIds.length === 2 || card.matched;
+    btn.onclick = () => handleClick(card.id);
+
+    const matchBg = card.matched ? `linear-gradient(135deg, ${mc}22, ${mc}33)` : "#fff";
+    const matchBorder = card.matched ? mc : "#e0e0e0";
+    const matchShadow = card.matched ? `0 4px 16px ${mc}44` : "0 4px 12px rgba(0,0,0,0.1)";
+    const textColor = card.matched ? mc : "#333";
+    const badgeBg = card.matched ? mc : (cat==="SM" ? "#2563EB" : "#7C3AED");
+
+    btn.innerHTML = `
+      <div class="card-inner${show?' flipped':''}">
+        <div class="card-face card-back">
+          <span class="card-back-title">Lilly</span>
+          <span class="card-back-sub">KINSALE</span>
+        </div>
+        <div class="card-face card-front${card.matched?' matched':''}" style="background:${matchBg};border-color:${matchBorder};box-shadow:${matchShadow};color:${textColor};">
+          <span class="badge" style="background:${badgeBg}">${cat}</span>
+          <span>${card.label}</span>
+        </div>
+      </div>`;
+    el.appendChild(btn);
+  });
+}
+
+function renderControls() {
+  const el = document.getElementById("controls");
+  el.innerHTML = "";
+  document.getElementById("winPanel").innerHTML = "";
+}
+
+function renderWin() {
+  const el = document.getElementById("winPanel");
+  if(!won) { el.innerHTML = ""; renderRestartBtn(); return; }
+  const total = cards.length/2;
+  const mSM = cards.filter(c=>c.matched&&CAT[c.label]==="SM").length/2;
+  const mLM = cards.filter(c=>c.matched&&CAT[c.label]==="LM").length/2;
+  el.innerHTML = `
+    <div class="win-panel">
+      <div style="font-size:2.2rem;margin-bottom:8px">🏆</div>
+      <h2>Product Roadmap Expert!</h2>
+      <p>Matched all <strong>${total}</strong> molecules in <strong>${moves}</strong> moves and <strong>${fmt(time)}</strong></p>
+      <p class="sub">${mSM} Small Molecules · ${mLM} Large Molecules</p>
+      <button class="play-again" onclick="startGame()">Play Again</button>
+    </div>`;
+  document.getElementById("controls").innerHTML = "";
+}
+
+function renderRestartBtn() {
+  const el = document.getElementById("controls");
+  if(!won && (moves > 0 || time > 0)) {
+    el.innerHTML = `<button class="restart-btn" onclick="startGame()">🔄 Restart</button>`;
+  } else { el.innerHTML = ""; }
+}
+
+function showConfetti() {
+  const wrap = document.getElementById("confettiWrap");
+  wrap.className = "confetti-wrap";
+  wrap.innerHTML = "";
+  const colors = ["#D52B1E","#43E97B","#FFD93D","#48C6EF","#FF8A5C","#A78BFA"];
+  for(let i=0;i<60;i++) {
+    const p = document.createElement("div");
+    p.className = "confetti-piece";
+    const size = 6 + Math.random()*6;
+    p.style.cssText = `left:${Math.random()*100}%;width:${size}px;height:${size}px;border-radius:${Math.random()>0.5?"50%":"2px"};background:${colors[i%colors.length]};animation-delay:${Math.random()*0.5}s;`;
+    wrap.appendChild(p);
+  }
+  setTimeout(()=>{ wrap.innerHTML=""; }, 3000);
+}
+
+startGame("Easy");
+</script>
+</body>
+</html>
